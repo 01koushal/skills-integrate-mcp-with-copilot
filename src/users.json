@@ -1,0 +1,12 @@
+{
+    "teachers": {
+        "mrsmith": {
+            "password": "pbkdf2:sha256:600000$XGU9Sdh9N8sPkq7r$5def96b9968f1a8091df4286c67a4de991b6e07e6d2fc02d83577d4e73228867",
+            "name": "Mr. Smith"
+        },
+        "msgreen": {
+            "password": "pbkdf2:sha256:600000$dRUqwKNF4AOuPvIt$c18d033ea881c6c080f766788b1d34c7aeec486208f85de6f6b8046af3d36d23",
+            "name": "Ms. Green"
+        }
+    }
+}
