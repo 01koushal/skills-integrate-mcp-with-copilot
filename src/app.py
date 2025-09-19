@@ -15,8 +15,14 @@ import json
 from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Optional
 
+# Get the current directory
+current_dir = Path(__file__).parent
+
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
+
+# Mount the static files directory
+app.mount("/static", StaticFiles(directory=os.path.join(current_dir, "static")), name="static")
 
 # Load users from JSON file
 def load_users():
@@ -40,17 +46,12 @@ async def get_current_user(session: Optional[str] = Cookie(None)) -> Optional[st
         return session
     return None
 
-# Mount the static files directory
-current_dir = Path(__file__).parent
-app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
-          "static")), name="static")
-
 # Authentication routes
 @app.post("/api/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if verify_teacher(form_data.username, form_data.password):
+async def login(username: str, password: str):
+    if verify_teacher(username, password):
         response = JSONResponse({"status": "success"})
-        response.set_cookie(key="session", value=form_data.username)
+        response.set_cookie(key="session", value=username)
         return response
     raise HTTPException(status_code=401, detail="Invalid credentials")
 

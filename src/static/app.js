@@ -34,14 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Handle login
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData = new FormData();
-    formData.append("username", document.getElementById("username").value);
-    formData.append("password", document.getElementById("password").value);
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        body: formData
+      const response = await fetch(`/api/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`, {
+        method: "POST"
       });
 
       if (response.ok) {
