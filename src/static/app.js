@@ -3,6 +3,73 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const loginModal = document.getElementById("loginModal");
+  const loginForm = document.getElementById("login-form");
+  const loginMessage = document.getElementById("login-message");
+
+  // Check if user is logged in
+  function checkAuthStatus() {
+    const isLoggedIn = document.cookie.includes("session=");
+    loginBtn.style.display = isLoggedIn ? "none" : "block";
+    logoutBtn.style.display = isLoggedIn ? "block" : "none";
+    signupForm.style.display = isLoggedIn ? "block" : "none";
+    if (!isLoggedIn) {
+      document.querySelectorAll(".delete-btn").forEach(btn => btn.style.display = "none");
+    }
+  }
+
+  // Show/hide login modal
+  loginBtn.addEventListener("click", () => {
+    loginModal.style.display = "block";
+  });
+
+  window.addEventListener("click", (event) => {
+    if (event.target === loginModal) {
+      loginModal.style.display = "none";
+    }
+  });
+
+  // Handle login
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append("username", document.getElementById("username").value);
+    formData.append("password", document.getElementById("password").value);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        loginModal.style.display = "none";
+        loginForm.reset();
+        loginMessage.className = "hidden";
+        checkAuthStatus();
+        fetchActivities(); // Refresh to show admin controls
+      } else {
+        loginMessage.textContent = "Invalid credentials";
+        loginMessage.className = "error";
+      }
+    } catch (error) {
+      loginMessage.textContent = "Login failed. Please try again.";
+      loginMessage.className = "error";
+    }
+  });
+
+  // Handle logout
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      checkAuthStatus();
+      fetchActivities(); // Refresh to hide admin controls
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  });
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -21,7 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft =
           details.max_participants - details.participants.length;
 
-        // Create participants HTML with delete icons instead of bullet points
+        const isLoggedIn = document.cookie.includes("session=");
+        
+        // Create participants HTML with delete icons only for logged in teachers
         const participantsHTML =
           details.participants.length > 0
             ? `<div class="participants-section">
@@ -30,7 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                      `<li><span class="participant-email">${email}</span>${
+                        isLoggedIn
+                          ? `<button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button>`
+                          : ""
+                      }</li>`
                   )
                   .join("")}
               </ul>

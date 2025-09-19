@@ -5,19 +5,60 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Cookie, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import os
 from pathlib import Path
+import json
+from werkzeug.security import check_password_hash, generate_password_hash
+from typing import Optional
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
+
+# Load users from JSON file
+def load_users():
+    with open(os.path.join(current_dir, "users.json")) as f:
+        return json.load(f)
+
+# Authentication functions
+def verify_teacher(username: str, password: str) -> bool:
+    users = load_users()
+    if username not in users["teachers"]:
+        return False
+    return check_password_hash(users["teachers"][username]["password"], password)
+
+async def get_current_user(session: Optional[str] = Cookie(None)) -> Optional[str]:
+    if not session:
+        return None
+    # In a real application, you'd verify the session token
+    # For this example, we'll just use the session as the username
+    users = load_users()
+    if session in users["teachers"]:
+        return session
+    return None
 
 # Mount the static files directory
 current_dir = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
           "static")), name="static")
+
+# Authentication routes
+@app.post("/api/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if verify_teacher(form_data.username, form_data.password):
+        response = JSONResponse({"status": "success"})
+        response.set_cookie(key="session", value=form_data.username)
+        return response
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/api/logout")
+async def logout():
+    response = JSONResponse({"status": "success"})
+    response.delete_cookie(key="session")
+    return response
 
 # In-memory activity database
 activities = {
@@ -89,8 +130,19 @@ def get_activities():
 
 
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
+async def signup_for_activity(
+    activity_name: str,
+    email: str,
+    current_user: str = Depends(get_current_user)
+):
     """Sign up a student for an activity"""
+    # Validate teacher is logged in
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in as a teacher to register students"
+        )
+
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
